@@ -1,0 +1,54 @@
+# VARIABLES
+BASE_BOX = "bento/rockylinux-9"
+BOX_RAM_MB = "1024"
+BOX_1 = "prometheusgrafana"
+BOX_2 = "node"
+PROMETHEUS_IP = "192.168.56.100"
+NODE_IP = "192.168.56.101"
+
+
+# Define $etchosts Script with Proper Interpolation
+$etchosts = <<-SCRIPT
+cp /etc/hosts /root && \\
+echo '#{PROMETHEUS_IP} prometheusgrafana' >> /etc/hosts && \\
+echo '#{NODE_IP} node' >> /etc/hosts
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.define BOX_2 do |node|
+    node.vm.box = BASE_BOX
+    node.vm.provider "virtualbox" do |vb|
+      vb.memory = BOX_RAM_MB
+    end
+    node.vm.network "private_network", ip: NODE_IP
+    node.vm.synced_folder "./provision", "/provision"
+    node.vm.provision "shell", inline: $etchosts
+    node.vm.provision "shell", path: "provision/node_exporter/node_exporter.sh"
+    node.vm.provision "shell", inline: "hostnamectl set-hostname #{BOX_2}"
+    node.vm.provision "ansible_local" do |ansible|
+      ansible.become = true
+      ansible.playbook = "provision/node_exporter/node_exporter.yaml"
+      ansible.galaxy_role_file = "provision/requirements.yaml"
+      ansible.galaxy_command = "ansible-galaxy collection install -r %{role_file} -f"
+    end
+  end
+
+  config.vm.define BOX_1 do |prometheusgrafana|
+    prometheusgrafana.vm.box = BASE_BOX
+    prometheusgrafana.vm.provider "virtualbox" do |vb|
+      vb.memory = BOX_RAM_MB
+    end
+    prometheusgrafana.vm.network "private_network", ip: PROMETHEUS_IP
+    prometheusgrafana.vm.synced_folder "./provision", "/provision"
+    prometheusgrafana.vm.provision "shell", inline: $etchosts
+    prometheusgrafana.vm.provision "shell", path: "provision/prometheus/grafana.sh"
+    prometheusgrafana.vm.provision "shell", inline: "hostnamectl set-hostname #{BOX_1}"
+    prometheusgrafana.vm.provision "ansible_local" do |ansible|
+      ansible.become = true
+      ansible.playbook = "provision/prometheus/prometheus.yaml"
+      ansible.galaxy_role_file = "provision/requirements.yaml"
+      ansible.galaxy_command = "ansible-galaxy collection install -r %{role_file} -f"
+    end
+  end
+  
+end

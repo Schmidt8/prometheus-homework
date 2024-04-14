@@ -1,0 +1,60 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    node_exporter_version: "1.2.2"
+    node_exporter_user_and_group: "node-exp"
+    cert_base_dir: "/provision/node_exporter_certs"
+    node_exporter_tls_server_config:
+      cert_file: "{{ cert_base_dir }}/tls.cert"
+      key_file: "{{ cert_base_dir }}/tls.key"
+    node_exporter_basic_auth_users:
+      devops: devops
+
+  pre_tasks:
+    - name: Ensure group 'node-exp' exists
+      group:
+        name: "{{ node_exporter_user_and_group }}"
+        state: present
+
+    - name: Ensure user 'node-exp' exists
+      user:
+        name: "{{ node_exporter_user_and_group }}"
+        group: "{{ node_exporter_user_and_group }}"
+        create_home: no
+
+    - name: Create node_exporter cert dir
+      file:
+        path: "{{ cert_base_dir }}"
+        state: directory
+        owner: "{{ node_exporter_user_and_group }}"
+        group: "{{ node_exporter_user_and_group }}"
+        mode: '0750'
+
+    - name: Generate a private key
+      openssl_privatekey:
+        path: "{{ cert_base_dir }}/tls.key"
+        owner: "{{ node_exporter_user_and_group }}"
+        group: "{{ node_exporter_user_and_group }}"
+        mode: '0640'
+
+    - name: Generate a CSR
+      openssl_csr:
+        path: "{{ cert_base_dir }}/tls.csr"
+        privatekey_path: "{{ cert_base_dir }}/tls.key"
+        common_name: "node_exporter"
+
+    - name: Create cert and key
+      openssl_certificate:
+        path: "{{ cert_base_dir }}/tls.cert"
+        csr_path: "{{ cert_base_dir }}/tls.csr"
+        privatekey_path: "{{ cert_base_dir }}/tls.key"
+        provider: selfsigned
+        owner: "{{ node_exporter_user_and_group }}"
+        group: "{{ node_exporter_user_and_group }}"
+        mode: '0640'
+
+  collections:
+    - prometheus.prometheus
+  roles:
+    - node_exporter  

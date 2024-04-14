@@ -1,0 +1,29 @@
+---
+- hosts: all
+  become: yes
+  collections:
+    - prometheus.prometheus
+  roles:
+    - prometheus
+  vars:
+    prometheus_version: "2.51.0"
+    prometheus_config_dir: "/etc/prometheus"
+    prometheus_scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets: ["localhost:9090"]
+      - job_name: 'node_exporter'
+        scheme: https  # Use HTTPS for the connection
+        metrics_path: '/metrics'
+        tls_config:
+          ca_file: '/provision/node_exporter_certs/tls.cert'
+          cert_file: '/provision/node_exporter_certs/tls.cert'
+          key_file: '/provision/node_exporter_certs/tls.key'
+          insecure_skip_verify: true
+        static_configs:
+          - targets: ['node:9100']  # Már meglévő Node Exporter IP cím és port
+            labels:
+              env: 'dev'
+        basic_auth:
+          username: 'devops'
+          password: 'devops'

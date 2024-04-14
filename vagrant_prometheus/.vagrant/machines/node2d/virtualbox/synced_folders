@@ -1,0 +1,1 @@
+{"virtualbox":{"/provision":{"guestpath":"/provision","hostpath":"C:/Users/User/Downloads/46_monitoring_logging_5/vagrant_prometheus/provision","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"C:/Users/User/Downloads/46_monitoring_logging_5/vagrant_prometheus","disabled":false,"__vagrantfile":true}}}
